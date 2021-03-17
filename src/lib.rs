@@ -2,13 +2,13 @@
 #[macro_use]
 extern crate bfd_macro;
 
-pub trait ByteOrder {
-    type Bytes;
+pub trait ByteOrder<'a> {
+    type Bytes: core::convert::TryFrom<&'a [u8], Error = TryFromSliceError>;
     fn to_ne_bytes(&self) -> Self::Bytes;
     fn to_le_bytes(&self) -> Self::Bytes;
     fn to_be_bytes(&self) -> Self::Bytes;
     fn from_ne_bytes(x: &[u8]) -> Self;
-    fn from_le_bytes(x: &[u8]) -> Self;
+    fn from_le_bytes(x: Self::Bytes) -> Self;
     fn from_be_bytes(x: &[u8]) -> Self;
     fn from_be(x: Self) -> Self;
     fn from_le(x: Self) -> Self;
@@ -32,6 +32,8 @@ pub struct TestMeta {
     pub field1: u32,
     pub field2: u8,
 }
+
+use std::array::TryFromSliceError;
 
 pub use bfd::fields::*;
 

@@ -43,13 +43,14 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     });
     quote! {
         mod bfd {
+            use core::convert::TryInto;
             pub struct #struct_plain_name<'a, End: crate::Endianess> {
                 raw: &'a [u8; #struct_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a> #struct_plain_name<'a, crate::Le> {
-                pub fn get<T: fields::#fields_trait_name + crate::ByteOrder>(&self)-> T {
-                    T::from_le_bytes(&self.raw[T::layout_range()])
+                pub fn get<T: fields::#fields_trait_name + crate::ByteOrder<'a>>(&self)-> T {
+                    T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
                 // pub fn to_meta(&self)-> super::#struct_ident {
                 //     super::#struct_ident {
@@ -82,7 +83,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                             }
                         }
                     }
-                    impl crate::ByteOrder for #fields_id {
+                    impl<'a> crate::ByteOrder<'a> for #fields_id {
                         type Bytes = [u8; core::mem::size_of::<#fields_ty>()];
                         fn to_ne_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_ne_bytes(self.value)
@@ -93,8 +94,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         fn to_be_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_be_bytes(self.value)
                         }
-                        fn from_le_bytes(x: &[u8]) -> Self {
-                            Self {value:#fields_ty::from_le_bytes(x.try_into().unwrap())}
+                        fn from_le_bytes(x: Self::Bytes) -> Self {
+                            Self {value:#fields_ty::from_le_bytes(x)}
                         }
                         fn from_be_bytes(x: &[u8]) -> Self {
                             Self {value:#fields_ty::from_be_bytes(x.try_into().unwrap())}
