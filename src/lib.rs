@@ -7,9 +7,9 @@ pub trait ByteOrder<'a> {
     fn to_ne_bytes(&self) -> Self::Bytes;
     fn to_le_bytes(&self) -> Self::Bytes;
     fn to_be_bytes(&self) -> Self::Bytes;
-    fn from_ne_bytes(x: &[u8]) -> Self;
+    fn from_ne_bytes(x: Self::Bytes) -> Self;
     fn from_le_bytes(x: Self::Bytes) -> Self;
-    fn from_be_bytes(x: &[u8]) -> Self;
+    fn from_be_bytes(x: Self::Bytes) -> Self;
     fn from_be(x: Self) -> Self;
     fn from_le(x: Self) -> Self;
     fn to_be(self) -> Self;

@@ -121,11 +121,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         fn from_le_bytes(x: Self::Bytes) -> Self {
                             Self {value:#fields_ty::from_le_bytes(x)}
                         }
-                        fn from_be_bytes(x: &[u8]) -> Self {
-                            Self {value:#fields_ty::from_be_bytes(x.try_into().unwrap())}
+                        fn from_be_bytes(x: Self::Bytes) -> Self {
+                            Self {value:#fields_ty::from_be_bytes(x)}
                         }
-                        fn from_ne_bytes(x: &[u8]) -> Self {
-                            Self {value:#fields_ty::from_ne_bytes(x.try_into().unwrap())}
+                        fn from_ne_bytes(x: Self::Bytes) -> Self {
+                            Self {value:#fields_ty::from_ne_bytes(x)}
                         }
                         fn from_be(x: Self) -> Self {
                             Self {
