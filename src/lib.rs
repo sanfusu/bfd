@@ -1,7 +1,7 @@
 #![feature(const_fn)]
-#[macro_use]
-extern crate bfd_macro;
 
+pub use bfd_macro::*;
+use core::array::TryFromSliceError;
 pub trait ByteOrder<'a> {
     type Bytes: core::convert::TryFrom<&'a [u8], Error = TryFromSliceError>;
     fn to_ne_bytes(&self) -> Self::Bytes;
@@ -20,29 +20,3 @@ pub struct Le;
 impl Endianess for Le {}
 pub struct Be;
 impl Endianess for Be {}
-// impl ByteOrder for u32 {
-//     type Bytes = [u8;4];
-//     fn to_ne_bytes(&self) -> [u8;4] {
-//         todo!()
-//     }
-// }
-
-#[derive(Fields)]
-pub struct TestMeta {
-    pub field1: u32,
-    pub field2: u8,
-}
-
-use std::array::TryFromSliceError;
-
-pub use bfd::fields::*;
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn layout_test() {
-        println!("{:?}", field1::layout_range());
-        println!("{:?}", field2::layout_range());
-    }
-}
