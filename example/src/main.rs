@@ -5,13 +5,16 @@ extern crate bfd;
 pub struct TestMeta {
     pub field1: u32,
     pub field2: u8,
+    pub field3: u64,
 }
 
 use bfd_field::*;
 use fields::TestFields;
 fn main() {
     println!("{:?}", fields::field1::layout_range());
-    let mut test_data = [0x12, 0x34, 0x56, 0x78, 0x9a];
+    let mut test_data = [
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
+    ];
     println!(
         "{:#x?}",
         TestMut::<bfd::Le>::new(&mut test_data).set(fields::field1::new(0x12345678))
@@ -29,8 +32,10 @@ fn main() {
         test_meta_from_le,
         TestMeta {
             field1: 0x12345678,
-            field2: 0x9a
+            field2: 0x9a,
+            field3: 0xf0debc9a78563412
         }
     );
     test_meta_from_le.field2 = 1;
+    println!("{:#x?}", test_meta_from_le);
 }
