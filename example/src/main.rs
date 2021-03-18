@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 #[macro_use]
 extern crate bfd;
 
@@ -6,6 +7,16 @@ pub struct TestMeta {
     pub field1: u32,
     pub field2: u8,
     pub field3: u64,
+}
+
+impl bfd::Valid for fields::field1 {
+    fn is_valid(&self) -> bool {
+        if self.raw() > 0 {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 use bfd_field::*;
@@ -20,7 +31,7 @@ fn main() {
         TestMut::<bfd::Le>::new(&mut test_data).set(fields::field1::new(0x12345678))
     );
     let test_le: Test<bfd::Le> = Test::new(&test_data);
-    assert_eq!(test_le.get::<fields::field1>().raw(), 0x12345678);
+    assert_eq!(test_le.get::<fields::field1>().value().unwrap(), 0x12345678);
     assert_eq!(test_le.get::<fields::field2>().raw(), 0x9a);
 
     let test_be: Test<bfd::Be> = Test::new(&test_data);

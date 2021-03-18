@@ -140,6 +140,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             pub mod fields {
                 use core::convert::TryInto;
+                use crate::bfd::Valid;
                 pub trait #fields_trait_name {
                     fn layout_range()->core::ops::Range<usize>;
                 }
@@ -163,6 +164,13 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         }
                         pub fn raw(&self)->#fields_ty {
                             self.value
+                        }
+                        pub fn value(&self)-> Option<#fields_ty> where Self: crate::bfd::Valid {
+                            if self.is_valid() {
+                                Some(self.value)
+                            } else {
+                                None
+                            }
                         }
                     }
                     impl<'a> crate::bfd::ByteOrder<'a> for #fields_id {
