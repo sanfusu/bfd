@@ -19,6 +19,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     );
     let struct_plain_name =
         format_ident!("{}", struct_ident.to_string().strip_suffix("Meta").unwrap());
+    let struct_plain_mut_name = format_ident!("{}Mut", struct_plain_name);
+
     let mut fields_id = Vec::<syn::Ident>::new();
     let mut fields_ty = Vec::<syn::Type>::new();
     if let syn::Data::Struct(data) = ast.data {
@@ -44,6 +46,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     quote! {
         mod bfd_field {
             use core::convert::TryInto;
+            use core::borrow::Borrow;
+            #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: crate::bfd::Endianess> {
                 raw: &'a [u8; #struct_size],
                 phantom: core::marker::PhantomData<End>
@@ -54,6 +58,9 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         raw,
                         phantom: core::marker::PhantomData
                     }
+                }
+                pub fn raw(&self)-> &'a [u8; #struct_size] {
+                    self.raw
                 }
             }
             impl<'a> #struct_plain_name<'a, crate::bfd::Le> {
@@ -71,6 +78,57 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             impl<'a> #struct_plain_name<'a, crate::bfd::Be> {
                 pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&self)-> T {
                     T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                }
+                pub fn to_meta(&self)-> super::#struct_ident {
+                    super::#struct_ident {
+                        #(
+                            #fields_id: self.get::<fields::#fields_id>().raw(),
+                        )*
+                    }
+                }
+            }
+            #[derive(Debug)]
+            pub struct #struct_plain_mut_name<'a, End: crate::bfd::Endianess> {
+                raw: &'a mut [u8; #struct_size],
+                phantom: core::marker::PhantomData<End>
+            }
+            impl<'a, End: crate::bfd::Endianess> #struct_plain_mut_name<'a, End> {
+                pub fn new(raw:  &'a mut [u8; #struct_size])->Self {
+                    Self {
+                        raw,
+                        phantom: core::marker::PhantomData
+                    }
+                }
+                pub fn raw_mut(&'a mut self)-> &'a mut [u8; #struct_size] {
+                    self.raw
+                }
+                pub fn raw(&'a self)->&'a [u8; #struct_size] {
+                    self.raw
+                }
+            }
+            impl<'a> #struct_plain_mut_name<'a, crate::bfd::Le> {
+                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a self)-> T {
+                    T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                }
+                pub fn set<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, crate::bfd::Le> {
+                    self.raw[T::layout_range()].copy_from_slice(value.to_le_bytes().borrow());
+                    self
+                }
+                pub fn to_meta(&self)-> super::#struct_ident {
+                    super::#struct_ident {
+                        #(
+                            #fields_id: self.get::<fields::#fields_id>().raw(),
+                        )*
+                    }
+                }
+            }
+            impl<'a> #struct_plain_mut_name<'a, crate::bfd::Be> {
+                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a self)-> T {
+                    T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                }
+                pub fn set<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, crate::bfd::Be> {
+                    self.raw[T::layout_range()].copy_from_slice(value.to_be_bytes().borrow());
+                    self
                 }
                 pub fn to_meta(&self)-> super::#struct_ident {
                     super::#struct_ident {
@@ -98,7 +156,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         }
                     }
                     impl #fields_id {
-                        fn new(value: #fields_ty)-> #fields_id {
+                        pub fn new(value: #fields_ty)-> #fields_id {
                             #fields_id {
                                 value
                             }

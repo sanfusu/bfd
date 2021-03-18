@@ -2,8 +2,9 @@
 
 pub use bfd_macro::*;
 use core::array::TryFromSliceError;
+use std::borrow::Borrow;
 pub trait ByteOrder<'a> {
-    type Bytes: core::convert::TryFrom<&'a [u8], Error = TryFromSliceError>;
+    type Bytes: core::convert::TryFrom<&'a [u8], Error = TryFromSliceError> + Borrow<[u8]>;
     fn to_ne_bytes(&self) -> Self::Bytes;
     fn to_le_bytes(&self) -> Self::Bytes;
     fn to_be_bytes(&self) -> Self::Bytes;
@@ -16,7 +17,9 @@ pub trait ByteOrder<'a> {
     fn to_le(self) -> Self;
 }
 pub trait Endianess {}
+#[derive(Debug)]
 pub struct Le;
 impl Endianess for Le {}
+#[derive(Debug)]
 pub struct Be;
 impl Endianess for Be {}
