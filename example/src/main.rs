@@ -9,18 +9,19 @@ pub struct TestMeta {
     pub field3: u64,
 }
 
-impl bfd::Valid for fields::field1 {
-    fn is_valid(&self) -> bool {
+impl fields::field1 {
+    pub fn value(&self) -> Option<u32> {
         if self.raw() > 0 {
-            true
+            Some(self.raw())
         } else {
-            false
+            None
         }
     }
 }
 
 use bfd_field::*;
 use fields::TestFields;
+
 fn main() {
     println!("{:?}", fields::field1::layout_range());
     let mut test_data = [
@@ -49,4 +50,7 @@ fn main() {
     );
     test_meta_from_le.field2 = 1;
     println!("{:#x?}", test_meta_from_le);
+
+    let s = test_be.as_ref();
+    assert_eq!(test_data, s);
 }

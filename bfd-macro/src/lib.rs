@@ -45,14 +45,18 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     });
     quote! {
         mod bfd_field {
-            use core::convert::TryInto;
-            use core::borrow::Borrow;
+            use core::{
+                convert::{AsRef, AsMut, TryInto},
+                borrow::Borrow
+            };
+            use crate::bfd::{ByteOrder, Endianess, Le, Be};
+
             #[derive(Debug)]
-            pub struct #struct_plain_name<'a, End: crate::bfd::Endianess> {
+            pub struct #struct_plain_name<'a, End: Endianess> {
                 raw: &'a [u8; #struct_size],
                 phantom: core::marker::PhantomData<End>
             }
-            impl<'a, End: crate::bfd::Endianess> #struct_plain_name<'a, End> {
+            impl<'a, End: Endianess> #struct_plain_name<'a, End> {
                 pub fn new(raw:  &'a [u8; #struct_size])->Self {
                     Self {
                         raw,
@@ -63,8 +67,13 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw
                 }
             }
-            impl<'a> #struct_plain_name<'a, crate::bfd::Le> {
-                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&self)-> T {
+            impl<'a, End: Endianess> AsRef<[u8]> for #struct_plain_name<'a, End> {
+                fn as_ref(&self)->&[u8] {
+                    self.raw
+                }
+            }
+            impl<'a> #struct_plain_name<'a, Le> {
+                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
                     T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
                 pub fn to_meta(&self)-> super::#struct_ident {
@@ -75,8 +84,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     }
                 }
             }
-            impl<'a> #struct_plain_name<'a, crate::bfd::Be> {
-                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&self)-> T {
+            impl<'a> #struct_plain_name<'a, Be> {
+                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
                     T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
                 pub fn to_meta(&self)-> super::#struct_ident {
@@ -88,11 +97,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
             }
             #[derive(Debug)]
-            pub struct #struct_plain_mut_name<'a, End: crate::bfd::Endianess> {
+            pub struct #struct_plain_mut_name<'a, End: Endianess> {
                 raw: &'a mut [u8; #struct_size],
                 phantom: core::marker::PhantomData<End>
             }
-            impl<'a, End: crate::bfd::Endianess> #struct_plain_mut_name<'a, End> {
+            impl<'a, End: Endianess> #struct_plain_mut_name<'a, End> {
                 pub fn new(raw:  &'a mut [u8; #struct_size])->Self {
                     Self {
                         raw,
@@ -106,11 +115,21 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw
                 }
             }
-            impl<'a> #struct_plain_mut_name<'a, crate::bfd::Le> {
-                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a self)-> T {
+            impl<'a, End: Endianess> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
+                fn as_ref(&self)->&[u8] {
+                    self.raw
+                }
+            }
+            impl<'a, End: Endianess> AsMut<[u8]> for #struct_plain_mut_name<'a, End> {
+                fn as_mut(&mut self)->&mut [u8] {
+                    self.raw
+                }
+            }
+            impl<'a> #struct_plain_mut_name<'a, Le> {
+                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
                     T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
-                pub fn set<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, crate::bfd::Le> {
+                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, Le> {
                     self.raw[T::layout_range()].copy_from_slice(value.to_le_bytes().borrow());
                     self
                 }
@@ -122,11 +141,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     }
                 }
             }
-            impl<'a> #struct_plain_mut_name<'a, crate::bfd::Be> {
-                pub fn get<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a self)-> T {
+            impl<'a> #struct_plain_mut_name<'a, Be> {
+                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
                     T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
-                pub fn set<T: fields::#fields_trait_name + crate::bfd::ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, crate::bfd::Be> {
+                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, Be> {
                     self.raw[T::layout_range()].copy_from_slice(value.to_be_bytes().borrow());
                     self
                 }
@@ -140,7 +159,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             pub mod fields {
                 use core::convert::TryInto;
-                use crate::bfd::Valid;
+                use crate::bfd::ByteOrder;
+
                 pub trait #fields_trait_name {
                     fn layout_range()->core::ops::Range<usize>;
                 }
@@ -165,15 +185,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         pub fn raw(&self)->#fields_ty {
                             self.value
                         }
-                        pub fn value(&self)-> Option<#fields_ty> where Self: crate::bfd::Valid {
-                            if self.is_valid() {
-                                Some(self.value)
-                            } else {
-                                None
-                            }
-                        }
                     }
-                    impl<'a> crate::bfd::ByteOrder<'a> for #fields_id {
+                    impl<'a> ByteOrder<'a> for #fields_id {
                         type Bytes = [u8; core::mem::size_of::<#fields_ty>()];
                         fn to_ne_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_ne_bytes(self.value)

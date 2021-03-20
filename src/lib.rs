@@ -16,11 +16,7 @@ pub trait ByteOrder<'a> {
     fn to_be(self) -> Self;
     fn to_le(self) -> Self;
 }
-pub trait Valid {
-    fn is_valid(&self) -> bool {
-        true
-    }
-}
+
 pub trait Endianess {}
 #[derive(Debug)]
 pub struct Le;
