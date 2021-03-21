@@ -36,7 +36,7 @@ mod test {
 
         let test = Test::<bfd::Le>::raw_from(&data);
 
-        let meta_arr: [u8; TestMeta::plain_size()] = test.to_meta().into();
+        let meta_arr: [u8; TestMeta::plain_size] = test.to_meta().into();
         assert_eq!(data, meta_arr);
     }
 }

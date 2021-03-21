@@ -51,10 +51,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             };
             use crate::bfd::{ByteOrder, Endianess, Le, Be};
             use fields::#fields_trait_name;
+            use super::#struct_ident;
 
-            impl Into<[u8; #struct_size]> for super::#struct_ident {
-                fn into(self)->[u8; #struct_size] {
-                    let mut ret:[u8; #struct_size] = [0; #struct_size];
+            impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
+                fn into(self)->[u8; #struct_ident::plain_size] {
+                    let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
                     #(
                     // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
                     ret.get_mut(fields::#fields_id::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
@@ -63,32 +64,30 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
             }
 
-            impl super::#struct_ident {
-                pub const fn plain_size()->usize {
-                    #struct_size
-                }
+            impl #struct_ident {
+                pub const plain_size: usize = #struct_size;
             }
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess> {
-                raw: &'a [u8; #struct_size],
+                raw: &'a [u8; #struct_ident::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess> #struct_plain_name<'a, End> {
                 /// same as raw_from.
-                pub fn new(raw:  &'a [u8; #struct_size])->Self {
+                pub fn new(raw:  &'a [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
                 /// raw_from means we didn't check the internal value.
-                pub fn raw_from(raw:  &'a [u8; #struct_size])->Self {
+                pub fn raw_from(raw:  &'a [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
-                pub fn raw(&self)-> &'a [u8; #struct_size] {
+                pub fn raw(&self)-> &'a [u8; #struct_ident::plain_size] {
                     self.raw
                 }
             }
@@ -102,8 +101,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
                     T::from_le_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
-                pub fn to_meta(&self)-> super::#struct_ident {
-                    super::#struct_ident {
+                pub fn to_meta(&self)-> #struct_ident {
+                    #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
@@ -114,8 +113,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
                     T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
-                pub fn to_meta(&self)-> super::#struct_ident {
-                    super::#struct_ident {
+                pub fn to_meta(&self)-> #struct_ident {
+                    #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
@@ -124,20 +123,20 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             #[derive(Debug)]
             pub struct #struct_plain_mut_name<'a, End: Endianess> {
-                raw: &'a mut [u8; #struct_size],
+                raw: &'a mut [u8; #struct_ident::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess> #struct_plain_mut_name<'a, End> {
-                pub fn new(raw:  &'a mut [u8; #struct_size])->Self {
+                pub fn new(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
-                pub fn raw_mut(&'a mut self)-> &'a mut [u8; #struct_size] {
+                pub fn raw_mut(&'a mut self)-> &'a mut [u8; #struct_ident::plain_size] {
                     self.raw
                 }
-                pub fn raw(&'a self)->&'a [u8; #struct_size] {
+                pub fn raw(&'a self)->&'a [u8; #struct_ident::plain_size] {
                     self.raw
                 }
             }
@@ -159,8 +158,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw[T::layout_range()].copy_from_slice(value.to_le_bytes().borrow());
                     self
                 }
-                pub fn to_meta(&self)-> super::#struct_ident {
-                    super::#struct_ident {
+                pub fn to_meta(&self)-> #struct_ident {
+                    #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
@@ -175,8 +174,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw[T::layout_range()].copy_from_slice(value.to_be_bytes().borrow());
                     self
                 }
-                pub fn to_meta(&self)-> super::#struct_ident {
-                    super::#struct_ident {
+                pub fn to_meta(&self)-> #struct_ident {
+                    #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
