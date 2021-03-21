@@ -90,14 +90,6 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn raw(&self)-> &'a [u8; #struct_ident::plain_size] {
                     self.raw
                 }
-            }
-            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_name<'a, End> {
-                fn as_ref(&self)->&[u8] {
-                    self.raw
-                }
-            }
-            impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
-
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
                     End::from_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
@@ -108,6 +100,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
                     }
+                }
+            }
+            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_name<'a, End> {
+                fn as_ref(&self)->&[u8] {
+                    self.raw
                 }
             }
             #[derive(Debug)]
@@ -135,18 +132,9 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn raw(&'a self)->&'a [u8; #struct_ident::plain_size] {
                     self.raw
                 }
-            }
-            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
-                fn as_ref(&self)->&[u8] {
-                    self.raw
-                }
-            }
-            impl<'a, End: Endianess<'a>> AsMut<[u8]> for #struct_plain_mut_name<'a, End> {
                 fn as_mut(&mut self)->&mut [u8] {
                     self.raw
                 }
-            }
-            impl<'a, End: Endianess<'a>> #struct_plain_mut_name<'a, End> {
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
                     T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
@@ -160,6 +148,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
                     }
+                }
+            }
+            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
+                fn as_ref(&self)->&[u8] {
+                    self.raw
                 }
             }
             pub mod fields {
