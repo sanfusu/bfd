@@ -68,11 +68,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub const plain_size: usize = #struct_size;
             }
             #[derive(Debug)]
-            pub struct #struct_plain_name<'a, End: Endianess> {
+            pub struct #struct_plain_name<'a, End: Endianess<'a>> {
                 raw: &'a [u8; #struct_ident::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
-            impl<'a, End: Endianess> #struct_plain_name<'a, End> {
+            impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
                 /// same as raw_from.
                 pub fn new(raw:  &'a [u8; #struct_ident::plain_size])->Self {
                     Self {
@@ -91,27 +91,16 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw
                 }
             }
-            impl<'a, End: Endianess> AsRef<[u8]> for #struct_plain_name<'a, End> {
+            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_name<'a, End> {
                 fn as_ref(&self)->&[u8] {
                     self.raw
                 }
             }
-            impl<'a> #struct_plain_name<'a, Le> {
+            impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
+
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
-                    T::from_le_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
-                }
-                pub fn to_meta(&self)-> #struct_ident {
-                    #struct_ident {
-                        #(
-                            #fields_id: self.get::<fields::#fields_id>().raw(),
-                        )*
-                    }
-                }
-            }
-            impl<'a> #struct_plain_name<'a, Be> {
-                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
-                    T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                    End::from_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
                 pub fn to_meta(&self)-> #struct_ident {
                     #struct_ident {
@@ -122,11 +111,11 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
             }
             #[derive(Debug)]
-            pub struct #struct_plain_mut_name<'a, End: Endianess> {
+            pub struct #struct_plain_mut_name<'a, End: Endianess<'a>> {
                 raw: &'a mut [u8; #struct_ident::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
-            impl<'a, End: Endianess> #struct_plain_mut_name<'a, End> {
+            impl<'a, End: Endianess<'a>> #struct_plain_mut_name<'a, End> {
                 pub fn new(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
@@ -147,41 +136,25 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw
                 }
             }
-            impl<'a, End: Endianess> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
+            impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
                 fn as_ref(&self)->&[u8] {
                     self.raw
                 }
             }
-            impl<'a, End: Endianess> AsMut<[u8]> for #struct_plain_mut_name<'a, End> {
+            impl<'a, End: Endianess<'a>> AsMut<[u8]> for #struct_plain_mut_name<'a, End> {
                 fn as_mut(&mut self)->&mut [u8] {
                     self.raw
                 }
             }
-            impl<'a> #struct_plain_mut_name<'a, Le> {
+            impl<'a, End: Endianess<'a>> #struct_plain_mut_name<'a, End> {
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
                     T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
-                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, Le> {
+                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, End> {
                     self.raw[T::layout_range()].copy_from_slice(value.to_le_bytes().borrow());
                     self
                 }
-                pub fn to_meta(&self)-> #struct_ident {
-                    #struct_ident {
-                        #(
-                            #fields_id: self.get::<fields::#fields_id>().raw(),
-                        )*
-                    }
-                }
-            }
-            impl<'a> #struct_plain_mut_name<'a, Be> {
-                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
-                    T::from_be_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
-                }
-                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, Be> {
-                    self.raw[T::layout_range()].copy_from_slice(value.to_be_bytes().borrow());
-                    self
-                }
-                pub fn to_meta(&self)-> #struct_ident {
+                pub fn to_meta(&'a self)-> #struct_ident {
                     #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),

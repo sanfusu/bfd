@@ -17,10 +17,20 @@ pub trait ByteOrder<'a> {
     fn to_le(self) -> Self;
 }
 
-pub trait Endianess {}
+pub trait Endianess<'a> {
+    fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T;
+}
 #[derive(Debug)]
 pub struct Le;
-impl Endianess for Le {}
+impl<'a> Endianess<'a> for Le {
+    fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
+        T::from_le_bytes(x)
+    }
+}
 #[derive(Debug)]
 pub struct Be;
-impl Endianess for Be {}
+impl<'a> Endianess<'a> for Be {
+    fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
+        T::from_be_bytes(x)
+    }
+}
