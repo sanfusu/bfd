@@ -139,7 +139,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     End::from_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
                 pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, End> {
-                    self.raw[T::layout_range()].copy_from_slice(End::to_bytes(&value).borrow());
+                    self.raw[T::layout_range()].copy_from_slice(End::to_bytes(value).borrow());
                     self
                 }
                 pub fn to_meta(&'a self)-> #struct_ident {
@@ -186,13 +186,13 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     }
                     impl<'a> ByteOrder<'a> for #fields_id {
                         type Bytes = [u8; core::mem::size_of::<#fields_ty>()];
-                        fn to_ne_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
+                        fn to_ne_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_ne_bytes(self.value)
                         }
-                        fn to_le_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
+                        fn to_le_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_le_bytes(self.value)
                         }
-                        fn to_be_bytes(&self) -> [u8; core::mem::size_of::<#fields_ty>()] {
+                        fn to_be_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             #fields_ty::to_be_bytes(self.value)
                         }
                         fn from_le_bytes(x: Self::Bytes) -> Self {
