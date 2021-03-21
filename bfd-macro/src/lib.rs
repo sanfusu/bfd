@@ -133,6 +133,13 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         phantom: core::marker::PhantomData
                     }
                 }
+                /// raw_from means we didn't check the internal value.
+                pub fn raw_from(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
+                    Self {
+                        raw,
+                        phantom: core::marker::PhantomData
+                    }
+                }
                 pub fn raw_mut(&'a mut self)-> &'a mut [u8; #struct_ident::plain_size] {
                     self.raw
                 }
