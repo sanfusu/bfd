@@ -22,6 +22,25 @@ impl fields::field1 {
 use bfd_field::*;
 use fields::TestFields;
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    fn test_data() -> [u8; 13] {
+        [
+            0x12, 0x34, 0x56, 0x78, 0x9a, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
+        ]
+    }
+    #[test]
+    fn meta_into_array() {
+        let data = test_data();
+
+        let test = Test::<bfd::Le>::raw_from(&data);
+
+        let meta_arr: [u8; TestMeta::plain_size()] = test.to_meta().into();
+        assert_eq!(data, meta_arr);
+    }
+}
+
 fn main() {
     println!("{:?}", fields::field1::layout_range());
     let mut test_data = [

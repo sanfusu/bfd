@@ -46,18 +46,43 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     quote! {
         mod bfd_field {
             use core::{
-                convert::{AsRef, AsMut, TryInto},
+                convert::{AsRef, AsMut, TryInto, Into},
                 borrow::Borrow
             };
             use crate::bfd::{ByteOrder, Endianess, Le, Be};
+            use fields::#fields_trait_name;
 
+            impl Into<[u8; #struct_size]> for super::#struct_ident {
+                fn into(self)->[u8; #struct_size] {
+                    let mut ret:[u8; #struct_size] = [0; #struct_size];
+                    #(
+                    // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
+                    ret.get_mut(fields::#fields_id::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
+                    )*
+                    ret
+                }
+            }
+
+            impl super::#struct_ident {
+                pub const fn plain_size()->usize {
+                    #struct_size
+                }
+            }
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess> {
                 raw: &'a [u8; #struct_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess> #struct_plain_name<'a, End> {
+                /// same as raw_from.
                 pub fn new(raw:  &'a [u8; #struct_size])->Self {
+                    Self {
+                        raw,
+                        phantom: core::marker::PhantomData
+                    }
+                }
+                /// raw_from means we didn't check the internal value.
+                pub fn raw_from(raw:  &'a [u8; #struct_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
@@ -74,7 +99,8 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             impl<'a> #struct_plain_name<'a, Le> {
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
-                    T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                    // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
+                    T::from_le_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
                 pub fn to_meta(&self)-> super::#struct_ident {
                     super::#struct_ident {
