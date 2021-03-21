@@ -136,10 +136,10 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     self.raw
                 }
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
-                    T::from_le_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
+                    End::from_bytes((&self.raw[T::layout_range()]).try_into().unwrap())
                 }
                 pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, End> {
-                    self.raw[T::layout_range()].copy_from_slice(value.to_le_bytes().borrow());
+                    self.raw[T::layout_range()].copy_from_slice(End::to_bytes(&value).borrow());
                     self
                 }
                 pub fn to_meta(&'a self)-> #struct_ident {

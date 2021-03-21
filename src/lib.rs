@@ -19,18 +19,30 @@ pub trait ByteOrder<'a> {
 
 pub trait Endianess<'a> {
     fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T;
+    fn to_bytes<T: ByteOrder<'a>>(x: &T) -> T::Bytes;
 }
 #[derive(Debug)]
 pub struct Le;
 impl<'a> Endianess<'a> for Le {
+    /// From le bytes(x) to ne bytes(ret)
     fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
         T::from_le_bytes(x)
+    }
+    /// convert x to le bytes
+    fn to_bytes<T: ByteOrder<'a>>(x: &T) -> T::Bytes {
+        x.to_le_bytes()
     }
 }
 #[derive(Debug)]
 pub struct Be;
 impl<'a> Endianess<'a> for Be {
+    /// From be bytes(x) to ne bytes(ret)
     fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
         T::from_be_bytes(x)
+    }
+    
+    /// convert x to be bytes
+    fn to_bytes<T: ByteOrder<'a>>(x: &T) -> T::Bytes {
+        x.to_be_bytes()
     }
 }
