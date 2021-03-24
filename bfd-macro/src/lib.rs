@@ -94,11 +94,18 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
                     End::from_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
-                pub fn to_meta(&self)-> #struct_ident {
+                pub fn to_meta(&'a self)-> #struct_ident {
                     #struct_ident {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
+                    }
+                }
+                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
+                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
+
+                    unsafe {
+                        &*(self.raw.as_ptr() as *const #struct_ident)
                     }
                 }
             }
@@ -148,6 +155,20 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         #(
                             #fields_id: self.get::<fields::#fields_id>().raw(),
                         )*
+                    }
+                }
+                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
+                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
+
+                    unsafe {
+                        &*(self.raw.as_ptr() as *const #struct_ident)
+                    }
+                }
+                pub unsafe fn as_mut_meta(&'a mut self)-> &'a mut #struct_ident {
+                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
+
+                    unsafe {
+                        &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
                     }
                 }
             }
