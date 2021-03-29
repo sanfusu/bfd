@@ -1,7 +1,8 @@
 [package]
 authors = ["sanfusu <sanfusu@outlook.com>"]
 edition = "2018"
-name = "bfd"
+name = "flassor"
+description = "flat-accessor"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,7 +10,7 @@ version = "0.1.0"
 [lib]
 
 [dependencies]
-bfd-macro = { path = "./bfd-macro" }
+flassor-macro = { path = "./flassor-macro" }
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0"

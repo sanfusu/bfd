@@ -1,5 +1,5 @@
 [package]
-name = "bfd-macro"
+name = "flassor-macro"
 version = "0.1.0"
 authors = ["sanfusu <sanfusu@outlook.com>"]
 edition = "2018"

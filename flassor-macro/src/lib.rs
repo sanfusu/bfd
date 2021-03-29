@@ -44,12 +44,12 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         acc
     });
     quote! {
-        mod bfd_field {
+        mod flassor_field {
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},
                 borrow::Borrow
             };
-            use crate::bfd::{ByteOrder, Endianess, Le, Be};
+            use crate::flassor::{ByteOrder, Endianess, Le, Be};
             use fields::#fields_trait_name;
             use super::#struct_ident;
 
@@ -179,7 +179,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             pub mod fields {
                 use core::convert::TryInto;
-                use crate::bfd::ByteOrder;
+                use crate::flassor::ByteOrder;
 
                 pub trait #fields_trait_name {
                     fn layout_range()->core::ops::Range<usize>;

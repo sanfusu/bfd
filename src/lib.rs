@@ -1,6 +1,6 @@
 #![feature(const_fn)]
 
-pub use bfd_macro::*;
+pub use flassor_macro::*;
 use core::array::TryFromSliceError;
 use std::borrow::Borrow;
 pub trait ByteOrder<'a> {
