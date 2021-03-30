@@ -1,7 +1,7 @@
 #![feature(const_fn)]
 
-pub use flassor_macro::*;
 use core::array::TryFromSliceError;
+pub use flassor_macro::*;
 use std::borrow::Borrow;
 pub trait ByteOrder<'a> {
     type Bytes: core::convert::TryFrom<&'a [u8], Error = TryFromSliceError> + Borrow<[u8]>;
@@ -15,6 +15,16 @@ pub trait ByteOrder<'a> {
     fn from_le(x: Self) -> Self;
     fn to_be(self) -> Self;
     fn to_le(self) -> Self;
+}
+pub unsafe trait RawField<T> {
+    fn raw(&self) -> T;
+    fn raw_ne(&self) -> T;
+}
+
+pub trait Field<T>: RawField<T> {
+    type Error;
+    type Output;
+    fn value(&self) -> Result<Self::Error, Self::Output>;
 }
 
 pub trait Endianess<'a> {
@@ -40,7 +50,7 @@ impl<'a> Endianess<'a> for Be {
     fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
         T::from_be_bytes(x)
     }
-    
+
     /// convert x to be bytes
     fn bytes_from<T: ByteOrder<'a>>(x: T) -> T::Bytes {
         x.to_be_bytes()

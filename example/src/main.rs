@@ -3,7 +3,7 @@
 extern crate flassor;
 
 #[derive(Fields, PartialEq, Debug)]
-pub struct TestMeta {
+pub struct Test {
     pub field1: u32,
     pub field2: u8,
     pub field3: u64,
@@ -27,7 +27,7 @@ fn example_sanfusu() {
     let test_data = [
         0x12, 0x34, 0x56, 0x78, 0x9a, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
     ];
-    let test_le: Test<flassor::Le> = Test::new(&test_data);
+    let test_le: TestFlat<flassor::Le> = TestFlat::raw_from(&test_data);
     let value = test_le.get::<fields::field2>().raw();
     print!("{}", value);
 }
@@ -43,9 +43,9 @@ mod test {
     fn meta_into_array() {
         let data = test_data();
 
-        let test = Test::<flassor::Le>::raw_from(&data);
+        let test = TestFlat::<flassor::Le>::raw_from(&data);
 
-        let meta_arr: [u8; TestMeta::plain_size] = test.to_meta().into();
+        let meta_arr: [u8; Test::plain_size] = test.to_meta().into();
         assert_eq!(data, meta_arr);
     }
 }
@@ -58,9 +58,9 @@ fn main() {
     ];
     println!(
         "{:#x?}",
-        TestMut::<flassor::Le>::new(&mut test_data).set(fields::field1::new(0x12345678))
+        TestFlatMut::<flassor::Le>::new(&mut test_data).set(fields::field1::new(0x12345678))
     );
-    let test_le: Test<flassor::Le> = Test::new(&test_data);
+    let test_le: TestFlat<flassor::Le> = TestFlat::raw_from(&test_data);
     // assert_eq!(test_le.get::<fields::field1>().value().unwrap(), 0x12345678);
     // assert_eq!(test_le.get::<fields::field2>().raw(), 0x9a);
     let value = test_le.get::<fields::field2>().raw();

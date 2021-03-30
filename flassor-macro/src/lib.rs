@@ -1,24 +1,27 @@
+use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Fields)]
-pub fn fields_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn fields_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let layout = generate_layout(input);
+    let layout = gen_fields(input);
     layout.into()
 }
 
-fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
+#[proc_macro_attribute]
+pub fn field_accessor(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    todo!()
+}
+
+fn gen_fields(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let struct_ident = ast.ident;
-    if struct_ident.to_string().contains("Meta") == false {
-        core::panic!("The struct derived Bdf should be named postfix Meta")
-    }
     let fields_trait_name = format_ident!(
         "{}Fields",
-        struct_ident.to_string().strip_suffix("Meta").unwrap()
+        struct_ident.to_string()
     );
     let struct_plain_name =
-        format_ident!("{}", struct_ident.to_string().strip_suffix("Meta").unwrap());
+        format_ident!("{}Flat", struct_ident.to_string());
     let struct_plain_mut_name = format_ident!("{}Mut", struct_plain_name);
 
     let mut fields_id = Vec::<syn::Ident>::new();
@@ -44,6 +47,27 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         acc
     });
     quote! {
+        use crate::flassor::Endianess;
+
+        impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
+            fn into(self)->[u8; #struct_ident::plain_size] {
+                let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
+                #(
+                // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
+                ret.get_mut(fields::#fields_id::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
+                )*
+                ret
+            }
+        }
+
+        impl#struct_ident {
+            pub const plain_size: usize = #struct_size;
+
+            pub fn flat<'a, End: Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->#struct_plain_name<'a, End> {
+                #struct_plain_name::<'a, End>::raw_from(raw)
+            }
+        }
+        
         mod flassor_field {
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},
@@ -52,21 +76,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             use crate::flassor::{ByteOrder, Endianess, Le, Be};
             use fields::#fields_trait_name;
             use super::#struct_ident;
-
-            impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
-                fn into(self)->[u8; #struct_ident::plain_size] {
-                    let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
-                    #(
-                    // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
-                    ret.get_mut(fields::#fields_id::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
-                    )*
-                    ret
-                }
-            }
-
-            impl #struct_ident {
-                pub const plain_size: usize = #struct_size;
-            }
+            
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess<'a>> {
                 raw: &'a [u8; #struct_ident::plain_size],
@@ -74,7 +84,7 @@ fn generate_layout(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
                 /// same as raw_from.
-                pub fn new(raw:  &'a [u8; #struct_ident::plain_size])->Self {
+                pub fn map(raw:  &'a [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
