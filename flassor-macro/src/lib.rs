@@ -2,26 +2,17 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_derive(Fields)]
-pub fn fields_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Accessor)]
+pub fn accessor_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let layout = gen_fields(input);
+    let layout = gen_accessor(input);
     layout.into()
 }
 
-#[proc_macro_attribute]
-pub fn field_accessor(_attr: TokenStream, _item: TokenStream) -> TokenStream {
-    todo!()
-}
-
-fn gen_fields(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
+fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let struct_ident = ast.ident;
-    let fields_trait_name = format_ident!(
-        "{}Fields",
-        struct_ident.to_string()
-    );
-    let struct_plain_name =
-        format_ident!("{}Flat", struct_ident.to_string());
+    let fields_trait_name = format_ident!("{}Fields", struct_ident.to_string());
+    let struct_plain_name = format_ident!("{}Flat", struct_ident.to_string());
     let struct_plain_mut_name = format_ident!("{}Mut", struct_plain_name);
 
     let mut fields_id = Vec::<syn::Ident>::new();
@@ -64,11 +55,11 @@ fn gen_fields(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             pub const plain_size: usize = #struct_size;
 
             pub fn flat<'a, End: Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->#struct_plain_name<'a, End> {
-                #struct_plain_name::<'a, End>::raw_from(raw)
+                #struct_plain_name::<'a, End>::from_raw(raw)
             }
         }
-        
-        mod flassor_field {
+
+        mod flat_accessor {
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},
                 borrow::Borrow
@@ -76,22 +67,15 @@ fn gen_fields(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             use crate::flassor::{ByteOrder, Endianess, Le, Be};
             use fields::#fields_trait_name;
             use super::#struct_ident;
-            
+
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess<'a>> {
                 raw: &'a [u8; #struct_ident::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
-                /// same as raw_from.
-                pub fn map(raw:  &'a [u8; #struct_ident::plain_size])->Self {
-                    Self {
-                        raw,
-                        phantom: core::marker::PhantomData
-                    }
-                }
                 /// raw_from means we didn't check the internal value.
-                pub fn raw_from(raw:  &'a [u8; #struct_ident::plain_size])->Self {
+                pub fn from_raw(raw:  &'a [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
