@@ -38,8 +38,6 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         acc
     });
     quote! {
-        use crate::flassor::Endianess;
-
         impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
             fn into(self)->[u8; #struct_ident::plain_size] {
                 let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
@@ -54,8 +52,8 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         impl#struct_ident {
             pub const plain_size: usize = #struct_size;
 
-            pub fn flat<'a, End: Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->#struct_plain_name<'a, End> {
-                #struct_plain_name::<'a, End>::from_raw(raw)
+            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->#struct_plain_name<'a, End> {
+                flat_accessor::#struct_plain_name::<'a, End>::from_raw(raw)
             }
         }
 
