@@ -43,16 +43,16 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
                 #(
                 // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
-                ret.get_mut(fields::#fields_id::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
+                ret.get_mut(<flat_accessor::fields::#fields_id as flat_accessor::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
                 )*
                 ret
             }
         }
 
-        impl#struct_ident {
+        impl #struct_ident {
             pub const plain_size: usize = #struct_size;
 
-            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->#struct_plain_name<'a, End> {
+            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->flat_accessor::#struct_plain_name<'a, End> {
                 flat_accessor::#struct_plain_name::<'a, End>::from_raw(raw)
             }
         }
