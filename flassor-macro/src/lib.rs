@@ -47,14 +47,16 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         (
             Some(quote! {
                 pub fn as_slice<'a>(&'a self)->&'a [u8] {
-                       core::slice::from_raw_parts(self as * const #struct_ident as * const u8, #struct_ident::plain_size)
+                    unsafe {
+                        core::slice::from_raw_parts(self as * const #struct_ident as * const u8, #struct_ident::plain_size)
+                    }
                 }
             }),
             Some(quote! {
                 /// 需要确保起始地址对齐。
                 /// 由于不同 CPU 架构对地址对齐的容忍度不同，所以本函数设为 unsafe.
                 pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
-                    debug_assert_eq!(self.raw.as_ptr() % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
+                    debug_assert_eq!(self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
 
                     &*(self.raw.as_ptr() as *const #struct_ident)
                 }
@@ -62,7 +64,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             Some(quote! {
                 /// 除了可修改之外，等同 as_meta
                 pub unsafe fn as_mut_meta(&'a mut self)-> &'a mut #struct_ident {
-                    debug_assert_eq!(self.raw.as_ptr() % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
+                    debug_assert_eq!(self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
 
                     &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
                 }
