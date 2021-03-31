@@ -58,7 +58,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         }
 
         mod flat_accessor {
-            use super::*;
+            use super::#struct_ident;
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},
                 borrow::Borrow
@@ -170,7 +170,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
             }
             pub mod fields {
-                use super::*;
+                use super::super::*;
                 use flassor::ByteOrder;
 
                 pub trait #fields_trait_name {
