@@ -58,13 +58,13 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         }
 
         mod flat_accessor {
+            use super::*;
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},
                 borrow::Borrow
             };
-            use crate::flassor::{ByteOrder, Endianess, Le, Be};
+            use flassor::{ByteOrder, Endianess, Le, Be};
             use fields::#fields_trait_name;
-            use super::#struct_ident;
 
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess<'a>> {
@@ -170,8 +170,8 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
             }
             pub mod fields {
-                use core::convert::TryInto;
-                use crate::flassor::ByteOrder;
+                use super::*;
+                use flassor::ByteOrder;
 
                 pub trait #fields_trait_name {
                     fn layout_range()->core::ops::Range<usize>;
