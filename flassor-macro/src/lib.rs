@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Accessor)]
@@ -37,6 +37,41 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         acc.extend(quote!(+ core::mem::size_of::<#ty>()));
         acc
     });
+
+    let (struct_ident_as_slice_fn, struct_plain_as_meta, struct_plain_mut_as_meta) = if ast
+        .attrs
+        .iter()
+        .find(|&x| x.to_token_stream().to_string() == "#[repr(packed)]")
+        .is_some()
+    {
+        (
+            Some(quote! {
+                pub fn as_slice<'a>(&'a self)->&'a [u8] {
+                       core::slice::from_raw_parts(self as * const #struct_ident as * const u8, #struct_ident::plain_size)
+                }
+            }),
+            Some(quote! {
+                /// 需要确保起始地址对齐。
+                /// 由于不同 CPU 架构对地址对齐的容忍度不同，所以本函数设为 unsafe.
+                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
+                    debug_assert_eq!(self.raw.as_ptr() % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
+
+                    &*(self.raw.as_ptr() as *const #struct_ident)
+                }
+            }),
+            Some(quote! {
+                /// 除了可修改之外，等同 as_meta
+                pub unsafe fn as_mut_meta(&'a mut self)-> &'a mut #struct_ident {
+                    debug_assert_eq!(self.raw.as_ptr() % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
+
+                    &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
+                }
+            }),
+        )
+    } else {
+        (None, None, None)
+    };
+
     quote! {
         impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
             fn into(self)->[u8; #struct_ident::plain_size] {
@@ -48,13 +83,18 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 ret
             }
         }
-
         impl #struct_ident {
             pub const plain_size: usize = #struct_size;
 
             pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->flat_accessor::#struct_plain_name<'a, End> {
                 flat_accessor::#struct_plain_name::<'a, End>::from_raw(raw)
             }
+
+            pub fn flat_mut<'a, End: crate::flassor::Endianess<'a>>(raw: &'a mut [u8; #struct_ident::plain_size])->flat_accessor::#struct_plain_mut_name<'a, End> {
+                flat_accessor::#struct_plain_mut_name::<'a, End>::from_raw(raw)
+            }
+
+            #struct_ident_as_slice_fn
         }
 
         mod flat_accessor {
@@ -93,13 +133,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         )*
                     }
                 }
-                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
-                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
-
-                    unsafe {
-                        &*(self.raw.as_ptr() as *const #struct_ident)
-                    }
-                }
+                #struct_plain_as_meta
             }
             impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_name<'a, End> {
                 fn as_ref(&self)->&[u8] {
@@ -118,8 +152,8 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         phantom: core::marker::PhantomData
                     }
                 }
-                /// raw_from means we didn't check the internal value.
-                pub fn raw_from(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
+                /// from_raw means we didn't check the internal value.
+                pub fn from_raw(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
@@ -149,20 +183,8 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         )*
                     }
                 }
-                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
-                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
-
-                    unsafe {
-                        &*(self.raw.as_ptr() as *const #struct_ident)
-                    }
-                }
-                pub unsafe fn as_mut_meta(&'a mut self)-> &'a mut #struct_ident {
-                    assert_eq!(core::mem::size_of::<#struct_ident>(), #struct_ident::plain_size, "The struct should be packed");
-
-                    unsafe {
-                        &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
-                    }
-                }
+               #struct_plain_as_meta
+               #struct_plain_mut_as_meta
             }
             impl<'a, End: Endianess<'a>> AsRef<[u8]> for #struct_plain_mut_name<'a, End> {
                 fn as_ref(&self)->&[u8] {
