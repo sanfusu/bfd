@@ -1,3 +1,5 @@
+extern crate case;
+use case::CaseExt;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput};
@@ -16,9 +18,14 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let struct_plain_mut_name = format_ident!("{}Mut", struct_plain_name);
 
     let mut fields_id = Vec::<syn::Ident>::new();
+    let mut fields_id_camel = Vec::<syn::Ident>::new();
     let mut fields_ty = Vec::<syn::Type>::new();
     if let syn::Data::Struct(data) = ast.data {
         data.fields.iter().for_each(|x| {
+            fields_id_camel.push(format_ident!(
+                "{}",
+                x.ident.to_owned().unwrap().to_string().to_camel()
+            ));
             fields_id.push(x.ident.to_owned().unwrap());
             fields_ty.push(x.ty.to_owned());
         });
@@ -26,7 +33,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let mut fields_range = Vec::<proc_macro2::TokenStream>::new();
     let first_ty = fields_ty[0].to_owned();
     fields_range.push(quote!(0..core::mem::size_of::<#first_ty>()));
-    fields_id[0..]
+    fields_id_camel[0..]
         .iter()
         .zip(fields_ty[1..].iter())
         .for_each(|(id,ty)| {
@@ -80,7 +87,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 let mut ret:[u8; <#struct_ident>::plain_size] = [0; <#struct_ident>::plain_size];
                 #(
                 // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
-                ret.get_mut(<flat_accessor::fields::#fields_id as flat_accessor::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
+                ret.get_mut(<flat_accessor::fields::#fields_id_camel as flat_accessor::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
                 )*
                 ret
             }
@@ -181,7 +188,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn to_meta(&'a self)-> #struct_ident {
                     #struct_ident {
                         #(
-                            #fields_id: self.get::<fields::#fields_id>().raw(),
+                            #fields_id: self.get::<fields::#fields_id_camel>().raw(),
                         )*
                     }
                 }
@@ -231,7 +238,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn to_meta(&'a self)-> #struct_ident {
                     #struct_ident {
                         #(
-                            #fields_id: self.get::<fields::#fields_id>().raw(),
+                            #fields_id: self.get::<fields::#fields_id_camel>().raw(),
                         )*
                     }
                 }
@@ -251,20 +258,19 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     fn layout_range()->core::ops::Range<usize>;
                 }
                 #(
-                    #[allow(non_camel_case_types)]
-                    #[derive(Debug)]
-                    pub struct #fields_id {
+                    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+                    pub struct #fields_id_camel {
                         value: #fields_ty
                     }
-                    impl #fields_trait_name for #fields_id{
+                    impl #fields_trait_name for #fields_id_camel{
                         #[inline]
                         fn layout_range()->core::ops::Range<usize> {
                             #fields_range
                         }
                     }
-                    impl #fields_id {
-                        pub fn new(value: #fields_ty)-> #fields_id {
-                            #fields_id {
+                    impl #fields_id_camel {
+                        pub fn new(value: #fields_ty)-> #fields_id_camel {
+                            #fields_id_camel {
                                 value
                             }
                         }
@@ -272,7 +278,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                             self.value
                         }
                     }
-                    impl<'a> ByteOrder<'a> for #fields_id {
+                    impl<'a> ByteOrder<'a> for #fields_id_camel {
                         type Bytes = [u8; core::mem::size_of::<#fields_ty>()];
                         fn to_ne_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
                             <#fields_ty>::to_ne_bytes(self.value)

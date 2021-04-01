@@ -30,7 +30,7 @@ fn example_sanfusu() {
         0x12, 0x34, 0x56, 0x78, 0x9a, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
     ];
     let test_le = TestFlatIntel::from_raw(&test_data);
-    let value = test_le.get::<fields::field2>().raw();
+    let value = test_le.get::<fields::Field2>().raw();
 
     print!("{}", value);
 }
@@ -55,18 +55,18 @@ mod test {
 
 fn main() {
     example_sanfusu();
-    println!("{:?}", fields::field1::layout_range());
+    println!("{:?}", fields::Field1::layout_range());
     let mut test_data = [
         0x12, 0x34, 0x56, 0x78, 0x9a, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
     ];
     println!(
         "{:#x?}",
-        TestFlatMut::<flassor::Le>::new(&mut test_data).set(fields::field1::new(0x12345678))
+        TestFlatMut::<flassor::Le>::new(&mut test_data).set(fields::Field1::new(0x12345678))
     );
     let test_le: TestFlat<flassor::Le> = TestFlat::from_raw(&test_data);
     // assert_eq!(test_le.get::<fields::field1>().value().unwrap(), 0x12345678);
     // assert_eq!(test_le.get::<fields::field2>().raw(), 0x9a);
-    let value = test_le.get::<fields::field2>().raw();
+    let value = test_le.get::<fields::Field2>().raw();
     print!("{}", value);
     // let test_be: Test<flassor::Be> = Test::new(&test_data);
     // assert_eq!(test_be.get::<fields::field1>().raw(), 0x78563412);
