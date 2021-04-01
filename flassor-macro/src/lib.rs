@@ -16,7 +16,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let fields_trait_name = format_ident!("{}Fields", struct_ident.to_string());
     let struct_plain_name = format_ident!("{}Flat", struct_ident.to_string());
     let struct_plain_mut_name = format_ident!("{}Mut", struct_plain_name);
-
+    let accessor_mod_name = format_ident!("{}_accessor", struct_ident.to_string().to_snake());
     let mut fields_id = Vec::<syn::Ident>::new();
     let mut fields_id_camel = Vec::<syn::Ident>::new();
     let mut fields_ty = Vec::<syn::Type>::new();
@@ -87,7 +87,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 let mut ret:[u8; <#struct_ident>::plain_size] = [0; <#struct_ident>::plain_size];
                 #(
                 // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
-                ret.get_mut(<flat_accessor::fields::#fields_id_camel as flat_accessor::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
+                ret.get_mut(<#accessor_mod_name::fields::#fields_id_camel as #accessor_mod_name::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
                 )*
                 ret
             }
@@ -95,12 +95,12 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         impl #struct_ident {
             pub const plain_size: usize = #struct_size;
 
-            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; <#struct_ident>::plain_size])->flat_accessor::#struct_plain_name<'a, End> {
-                flat_accessor::#struct_plain_name::<'a, End>::from_raw(raw)
+            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; <#struct_ident>::plain_size])->#accessor_mod_name::#struct_plain_name<'a, End> {
+                #accessor_mod_name::#struct_plain_name::<'a, End>::from_raw(raw)
             }
 
-            pub fn flat_mut<'a, End: crate::flassor::Endianess<'a>>(raw: &'a mut [u8; <#struct_ident>::plain_size])->flat_accessor::#struct_plain_mut_name<'a, End> {
-                flat_accessor::#struct_plain_mut_name::<'a, End>::from_raw(raw)
+            pub fn flat_mut<'a, End: crate::flassor::Endianess<'a>>(raw: &'a mut [u8; <#struct_ident>::plain_size])->#accessor_mod_name::#struct_plain_mut_name<'a, End> {
+                #accessor_mod_name::#struct_plain_mut_name::<'a, End>::from_raw(raw)
             }
 
             #struct_ident_as_slice_fn
@@ -156,7 +156,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
         }
 
-        mod flat_accessor {
+        mod #accessor_mod_name {
             use super::#struct_ident;
             use core::{
                 convert::{AsRef, AsMut, TryInto, Into},

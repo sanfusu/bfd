@@ -21,7 +21,7 @@ pub struct Test {
 
 use fields::TestFields;
 use flassor::Le;
-use flat_accessor::*;
+use test_accessor::*;
 
 pub type TestFlatIntel<'a> = TestFlat<'a, Le>;
 #[no_mangle]
