@@ -272,7 +272,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         }
                     }
                     impl #fields_id_camel {
-                        pub fn new(value: #fields_ty)-> #fields_id_camel {
+                        pub const fn new(value: #fields_ty)-> #fields_id_camel {
                             #fields_id_camel {
                                 value
                             }
