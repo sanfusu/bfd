@@ -48,7 +48,7 @@ mod test {
 
         let test = TestFlat::<flassor::Le>::from_raw(&data);
 
-        let meta_arr: [u8; Test::plain_size] = test.to_meta().into();
+        let meta_arr: [u8; Test::flat_size()] = test.to_meta().into();
         assert_eq!(data, meta_arr);
     }
 }
