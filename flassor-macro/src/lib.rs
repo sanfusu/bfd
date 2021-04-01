@@ -48,7 +48,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             Some(quote! {
                 pub fn as_slice<'a>(&'a self)->&'a [u8] {
                     unsafe {
-                        core::slice::from_raw_parts(self as * const #struct_ident as * const u8, #struct_ident::plain_size)
+                        core::slice::from_raw_parts(self as * const #struct_ident as * const u8, <#struct_ident>::plain_size)
                     }
                 }
             }),
@@ -75,9 +75,9 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     };
 
     quote! {
-        impl Into<[u8; #struct_ident::plain_size]> for #struct_ident {
-            fn into(self)->[u8; #struct_ident::plain_size] {
-                let mut ret:[u8; #struct_ident::plain_size] = [0; #struct_ident::plain_size];
+        impl Into<[u8; <#struct_ident>::plain_size]> for #struct_ident {
+            fn into(self)->[u8; <#struct_ident>::plain_size] {
+                let mut ret:[u8; <#struct_ident>::plain_size] = [0; <#struct_ident>::plain_size];
                 #(
                 // PANIC-SAFETY: This won't be panic, since the ret's size is determined;
                 ret.get_mut(<flat_accessor::fields::#fields_id as flat_accessor::fields::#fields_trait_name>::layout_range()).unwrap().copy_from_slice(&self.#fields_id.to_ne_bytes());
@@ -88,15 +88,65 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         impl #struct_ident {
             pub const plain_size: usize = #struct_size;
 
-            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; #struct_ident::plain_size])->flat_accessor::#struct_plain_name<'a, End> {
+            pub fn flat<'a, End: crate::flassor::Endianess<'a>>(raw: &'a [u8; <#struct_ident>::plain_size])->flat_accessor::#struct_plain_name<'a, End> {
                 flat_accessor::#struct_plain_name::<'a, End>::from_raw(raw)
             }
 
-            pub fn flat_mut<'a, End: crate::flassor::Endianess<'a>>(raw: &'a mut [u8; #struct_ident::plain_size])->flat_accessor::#struct_plain_mut_name<'a, End> {
+            pub fn flat_mut<'a, End: crate::flassor::Endianess<'a>>(raw: &'a mut [u8; <#struct_ident>::plain_size])->flat_accessor::#struct_plain_mut_name<'a, End> {
                 flat_accessor::#struct_plain_mut_name::<'a, End>::from_raw(raw)
             }
 
             #struct_ident_as_slice_fn
+        }
+        impl<'a> flassor::ByteOrder<'a> for #struct_ident {
+            type Bytes = [u8; <#struct_ident>::plain_size];
+            fn to_ne_bytes(self) -> [u8; <#struct_ident>::plain_size] {
+                self.into()
+            }
+            fn to_le_bytes(self) -> [u8; <#struct_ident>::plain_size] {
+                let ret = #struct_ident {
+                    #(#fields_id: <#fields_ty>::to_le(self.#fields_id)),*
+                };
+                ret.into()
+            }
+            fn to_be_bytes(self) -> [u8; <#struct_ident>::plain_size] {
+                let ret = #struct_ident {
+                    #(#fields_id: <#fields_ty>::to_be(self.#fields_id)),*
+                };
+                ret.into()
+            }
+            fn from_le_bytes(x: Self::Bytes) -> Self {
+                let ret = <#struct_ident>::flat::<flassor::Le>(&x);
+                ret.to_meta()
+            }
+            fn from_be_bytes(x: Self::Bytes) -> Self {
+                let ret = <#struct_ident>::flat::<flassor::Be>(&x);
+                ret.to_meta()
+            }
+            fn from_ne_bytes(x: Self::Bytes) -> Self {
+                let ret = <#struct_ident>::flat::<flassor::Ne>(&x);
+                ret.to_meta()
+            }
+            fn from_be(x: Self) -> Self {
+                Self {
+                    #(#fields_id: <#fields_ty>::from_be(x.#fields_id)),*
+                }
+            }
+            fn from_le(x: Self) -> Self {
+                Self {
+                    #(#fields_id: <#fields_ty>::from_le(x.#fields_id)),*
+                }
+            }
+            fn to_be(self) -> Self {
+                Self {
+                    #(#fields_id: <#fields_ty>::to_be(self.#fields_id)),*
+                }
+            }
+            fn to_le(self) -> Self {
+                Self {
+                    #(#fields_id: <#fields_ty>::to_le(self.#fields_id)),*
+                }
+            }
         }
 
         mod flat_accessor {
@@ -110,18 +160,18 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
 
             #[derive(Debug)]
             pub struct #struct_plain_name<'a, End: Endianess<'a>> {
-                raw: &'a [u8; #struct_ident::plain_size],
+                raw: &'a [u8; <#struct_ident>::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess<'a>> #struct_plain_name<'a, End> {
                 /// raw_from means we didn't check the internal value.
-                pub fn from_raw(raw:  &'a [u8; #struct_ident::plain_size])->Self {
+                pub fn from_raw(raw:  &'a [u8; <#struct_ident>::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
-                pub fn raw(&self)-> &'a [u8; #struct_ident::plain_size] {
+                pub fn raw(&self)-> &'a [u8; <#struct_ident>::plain_size] {
                     self.raw
                 }
                 pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
@@ -144,27 +194,27 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }
             #[derive(Debug)]
             pub struct #struct_plain_mut_name<'a, End: Endianess<'a>> {
-                raw: &'a mut [u8; #struct_ident::plain_size],
+                raw: &'a mut [u8; <#struct_ident>::plain_size],
                 phantom: core::marker::PhantomData<End>
             }
             impl<'a, End: Endianess<'a>> #struct_plain_mut_name<'a, End> {
-                pub fn new(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
+                pub fn new(raw:  &'a mut [u8; <#struct_ident>::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
                 /// from_raw means we didn't check the internal value.
-                pub fn from_raw(raw:  &'a mut [u8; #struct_ident::plain_size])->Self {
+                pub fn from_raw(raw:  &'a mut [u8; <#struct_ident>::plain_size])->Self {
                     Self {
                         raw,
                         phantom: core::marker::PhantomData
                     }
                 }
-                pub fn raw_mut(&'a mut self)-> &'a mut [u8; #struct_ident::plain_size] {
+                pub fn raw_mut(&'a mut self)-> &'a mut [u8; <#struct_ident>::plain_size] {
                     self.raw
                 }
-                pub fn raw(&'a self)->&'a [u8; #struct_ident::plain_size] {
+                pub fn raw(&'a self)->&'a [u8; <#struct_ident>::plain_size] {
                     self.raw
                 }
                 fn as_mut(&mut self)->&mut [u8] {
@@ -225,41 +275,41 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     impl<'a> ByteOrder<'a> for #fields_id {
                         type Bytes = [u8; core::mem::size_of::<#fields_ty>()];
                         fn to_ne_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
-                            #fields_ty::to_ne_bytes(self.value)
+                            <#fields_ty>::to_ne_bytes(self.value)
                         }
                         fn to_le_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
-                            #fields_ty::to_le_bytes(self.value)
+                            <#fields_ty>::to_le_bytes(self.value)
                         }
                         fn to_be_bytes(self) -> [u8; core::mem::size_of::<#fields_ty>()] {
-                            #fields_ty::to_be_bytes(self.value)
+                            <#fields_ty>::to_be_bytes(self.value)
                         }
                         fn from_le_bytes(x: Self::Bytes) -> Self {
-                            Self {value:#fields_ty::from_le_bytes(x)}
+                            Self {value:<#fields_ty>::from_le_bytes(x)}
                         }
                         fn from_be_bytes(x: Self::Bytes) -> Self {
-                            Self {value:#fields_ty::from_be_bytes(x)}
+                            Self {value:<#fields_ty>::from_be_bytes(x)}
                         }
                         fn from_ne_bytes(x: Self::Bytes) -> Self {
-                            Self {value:#fields_ty::from_ne_bytes(x)}
+                            Self {value:<#fields_ty>::from_ne_bytes(x)}
                         }
                         fn from_be(x: Self) -> Self {
                             Self {
-                                value: #fields_ty::from_be(x.value)
+                                value: <#fields_ty>::from_be(x.value)
                             }
                         }
                         fn from_le(x: Self) -> Self {
                             Self {
-                                value: #fields_ty::from_le(x.value)
+                                value: <#fields_ty>::from_le(x.value)
                             }
                         }
                         fn to_be(self) -> Self {
                             Self {
-                                value: #fields_ty::to_be(self.value)
+                                value: <#fields_ty>::to_be(self.value)
                             }
                         }
                         fn to_le(self) -> Self {
                             Self {
-                                value: #fields_ty::to_le(self.value)
+                                value: <#fields_ty>::to_le(self.value)
                             }
                         }
                     }

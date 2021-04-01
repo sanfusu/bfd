@@ -56,3 +56,60 @@ impl<'a> Endianess<'a> for Be {
         x.to_be_bytes()
     }
 }
+#[derive(Debug)]
+pub struct Ne;
+impl<'a> Endianess<'a> for Ne {
+    /// From Ne bytes(x) to ne bytes(ret)
+    fn from_bytes<T: ByteOrder<'a>>(x: T::Bytes) -> T {
+        T::from_ne_bytes(x)
+    }
+
+    /// convert x to Ne bytes
+    fn bytes_from<T: ByteOrder<'a>>(x: T) -> T::Bytes {
+        x.to_ne_bytes()
+    }
+}
+
+impl<'a, const N: usize> ByteOrder<'a> for [u8; N] {
+    type Bytes = [u8; N];
+
+    fn to_ne_bytes(self) -> Self::Bytes {
+        self
+    }
+
+    fn to_le_bytes(self) -> Self::Bytes {
+        self
+    }
+
+    fn to_be_bytes(self) -> Self::Bytes {
+        self
+    }
+
+    fn from_ne_bytes(x: Self::Bytes) -> Self {
+        x
+    }
+
+    fn from_le_bytes(x: Self::Bytes) -> Self {
+        x
+    }
+
+    fn from_be_bytes(x: Self::Bytes) -> Self {
+        x
+    }
+
+    fn from_be(x: Self) -> Self {
+        x
+    }
+
+    fn from_le(x: Self) -> Self {
+        x
+    }
+
+    fn to_be(self) -> Self {
+       self
+    }
+
+    fn to_le(self) -> Self {
+        self
+    }
+}
