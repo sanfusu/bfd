@@ -278,7 +278,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                                 value
                             }
                         }
-                        pub fn raw(&self)->#fields_ty {
+                        pub const fn raw(&self)->#fields_ty {
                             self.value
                         }
                     }
