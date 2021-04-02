@@ -272,7 +272,8 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         }
                     }
                     impl #fields_id_camel {
-                        pub const fn new(value: #fields_ty)-> #fields_id_camel {
+                        /// new 函数用于创建性的字段值，但其可见域为 crate，如果需要暴露成接口，可以自行实现 convert::from trait。
+                        pub(crate) const fn new(value: #fields_ty)-> #fields_id_camel {
                             #fields_id_camel {
                                 value
                             }
