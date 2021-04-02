@@ -1,4 +1,3 @@
-#![feature(trivial_bounds)]
 #[macro_use]
 extern crate flassor;
 

@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 use core::array::TryFromSliceError;
 pub use flassor_macro::*;
 use std::borrow::Borrow;
