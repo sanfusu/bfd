@@ -184,7 +184,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 pub fn raw(&self)-> &'a [u8; <#struct_ident>::flat_size()] {
                     self.raw
                 }
-                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&self)-> T {
+                pub fn get<T: fields::#fields_trait_name<'a>>(&self)-> T {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
                     End::from_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
@@ -230,11 +230,11 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 fn as_mut(&mut self)->&mut [u8] {
                     self.raw
                 }
-                pub fn get<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a self)-> T {
+                pub fn get<T: fields::#fields_trait_name<'a>>(&'a self)-> T {
                     // PANIC-SAFETY: This won't be panic, since the raw's size is determined.
                     End::from_bytes(self.raw.get(T::layout_range()).unwrap().try_into().unwrap())
                 }
-                pub fn set<T: fields::#fields_trait_name + ByteOrder<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, End> {
+                pub fn set<T: fields::#fields_trait_name<'a>>(&'a mut self, value:T)-> &'a mut #struct_plain_mut_name<'a, End> {
                     self.raw[T::layout_range()].copy_from_slice(End::bytes_from(value).borrow());
                     self
                 }
@@ -257,7 +257,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                 use super::super::*;
                 use flassor::ByteOrder;
 
-                pub trait #fields_trait_name {
+                pub trait #fields_trait_name<'a>: ByteOrder<'a> {
                     fn layout_range()->core::ops::Range<usize>;
                 }
                 #(
@@ -265,7 +265,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     pub struct #fields_id_camel {
                         value: #fields_ty
                     }
-                    impl #fields_trait_name for #fields_id_camel{
+                    impl<'a> #fields_trait_name<'a> for #fields_id_camel{
                         #[inline]
                         fn layout_range()->core::ops::Range<usize> {
                             #fields_range
