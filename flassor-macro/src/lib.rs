@@ -61,19 +61,27 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             }),
             Some(quote! {
                 /// 需要确保起始地址对齐。
-                /// 由于不同 CPU 架构对地址对齐的容忍度不同，所以本函数设为 unsafe.
-                pub unsafe fn as_meta(&'a self)-> &'a #struct_ident {
-                    debug_assert_eq!(self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
-
-                    &*(self.raw.as_ptr() as *const #struct_ident)
+                /// rust 中对未对齐地址的解引用是 undefined 行为。
+                pub fn as_meta(&'a self)-> Result<&'a #struct_ident, ()>{
+                    unsafe {
+                        if (self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0) {
+                            Err(())
+                        } else {
+                            Ok(&*(self.raw.as_ptr() as *const #struct_ident))
+                        }
+                    }
                 }
             }),
             Some(quote! {
                 /// 除了可修改之外，等同 as_meta
-                pub unsafe fn as_mut_meta(&'a mut self)-> &'a mut #struct_ident {
-                    debug_assert_eq!(self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>(), 0, "The pointer should be aligned to struct");
-
-                    &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
+                pub fn as_mut_meta(&'a mut self)-> Result<&'a mut #struct_ident, ()> {
+                    unsafe {
+                        if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0 {
+                            Err(())
+                        } else {
+                            Ok(&mut *(self.raw.as_mut_ptr() as *mut #struct_ident))
+                        }
+                    }
                 }
             }),
         )
@@ -245,6 +253,9 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         )*
                     }
                 }
+                pub fn to_flat(&'a self)->#struct_plain_name<'a, End> {
+                    #struct_plain_name::from_raw(self.raw())
+                }
                #struct_plain_as_meta
                #struct_plain_mut_as_meta
             }
@@ -261,7 +272,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                     fn layout_range()->core::ops::Range<usize>;
                 }
                 #(
-                    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+                    #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
                     pub struct #fields_id_camel {
                         value: #fields_ty
                     }
