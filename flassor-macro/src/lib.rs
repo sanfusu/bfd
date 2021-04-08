@@ -71,6 +71,10 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                         }
                     }
                 }
+                /// 不检查地址对齐
+                pub unsafe fn as_meta_uncheck(&'a self)-> &'a #struct_ident {
+                    &*(self.raw.as_ptr() as *const #struct_ident)
+                }
             }),
             Some(quote! {
                 /// 除了可修改之外，等同 as_meta
@@ -82,6 +86,10 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
                             Ok(&mut *(self.raw.as_mut_ptr() as *mut #struct_ident))
                         }
                     }
+                }
+                /// 不检查地址对齐
+                pub unsafe fn as_mut_meta_uncheck(&'a mut self)-> &'a mut #struct_ident {
+                    &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
                 }
             }),
         )
