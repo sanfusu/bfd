@@ -1,29 +1,30 @@
 extern crate case;
 use case::CaseExt;
 use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_derive(Accessor)]
-pub fn accessor_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn accessor(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let layout = gen_accessor(input);
     layout.into()
 }
 
 fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
-    if ast
-        .attrs
-        .iter()
-        .find(|&x| x.to_token_stream().to_string() == "#[repr(C)]")
-        .is_none()
-    {
-        return syn::parse::Error::new_spanned(
-            ast.ident.to_token_stream(),
-            "The struct should be a repr(c)",
-        )
-        .to_compile_error();
-    }
+    let ast_struct = ast.clone();
+    // if ast
+    //     .attrs
+    //     .iter()
+    //     .find(|&x| x.to_token_stream().to_string() == "#[repr(C)]")
+    //     .is_none()
+    // {
+    //     return syn::parse::Error::new_spanned(
+    //         ast.ident.to_token_stream(),
+    //         "The struct should be a repr(c)",
+    //     )
+    //     .to_compile_error();
+    // }
     let struct_ident = ast.ident;
     let fields_trait_name = format_ident!("{}Fields", struct_ident.to_string());
     let struct_plain_name = format_ident!("{}Flat", struct_ident.to_string());
@@ -99,6 +100,9 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     );
 
     quote! {
+        #[repr(C)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
+        #ast_struct
         impl Into<[u8; <#struct_ident>::flat_size()]> for #struct_ident {
             fn into(self)->[u8; <#struct_ident>::flat_size()] {
                 let mut ret:[u8; <#struct_ident>::flat_size()] = [0; <#struct_ident>::flat_size()];
