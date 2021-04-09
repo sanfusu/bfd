@@ -12,6 +12,18 @@ pub fn accessor_derive(input: TokenStream) -> TokenStream {
 }
 
 fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
+    if ast
+        .attrs
+        .iter()
+        .find(|&x| x.to_token_stream().to_string() == "#[repr(C)]")
+        .is_none()
+    {
+        return syn::parse::Error::new_spanned(
+            ast.ident.to_token_stream(),
+            "The struct should be a repr(c)",
+        )
+        .to_compile_error();
+    }
     let struct_ident = ast.ident;
     let fields_trait_name = format_ident!("{}Fields", struct_ident.to_string());
     let struct_plain_name = format_ident!("{}Flat", struct_ident.to_string());
@@ -31,71 +43,60 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         });
     }
     let mut fields_range = Vec::<proc_macro2::TokenStream>::new();
-    let first_ty = fields_ty[0].to_owned();
-    fields_range.push(quote!(0..core::mem::size_of::<#first_ty>()));
-    fields_id_camel[0..]
+    fields_id[0..]
         .iter()
-        .zip(fields_ty[1..].iter())
+        .zip(fields_ty[0..].iter())
         .for_each(|(id,ty)| {
-            fields_range.push(quote!(<#id>::layout_range().end..<#id>::layout_range().end + core::mem::size_of::<#ty>()))
+            fields_range.push(quote!(
+                unsafe {
+                    (&(*(0 as *const #struct_ident)).#id as *const #ty as *const u8 as usize)
+                    ..
+                    (&(*(0 as *const #struct_ident)).#id as *const #ty as *const u8 as usize) + core::mem::size_of::<#ty>()})
+            )
         });
 
-    let struct_size = fields_ty.iter().fold(quote!(0), |mut acc, ty| {
-        acc.extend(quote!(+ core::mem::size_of::<#ty>()));
-        acc
-    });
-
-    let (struct_ident_as_slice_fn, struct_plain_as_meta, struct_plain_mut_as_meta) = if ast
-        .attrs
-        .iter()
-        .find(|&x| x.to_token_stream().to_string() == "#[repr(packed)]")
-        .is_some()
-    {
-        (
-            Some(quote! {
-                pub fn as_slice<'a>(&'a self)->&'a [u8] {
-                    unsafe {
-                        core::slice::from_raw_parts(self as * const #struct_ident as * const u8, <#struct_ident>::flat_size())
+    let (struct_ident_as_slice_fn, struct_plain_as_meta, struct_plain_mut_as_meta) = (
+        Some(quote! {
+            pub fn as_slice<'a>(&'a self)->&'a [u8] {
+                unsafe {
+                    core::slice::from_raw_parts(self as * const #struct_ident as * const u8, <#struct_ident>::flat_size())
+                }
+            }
+        }),
+        Some(quote! {
+            /// 需要确保起始地址对齐。
+            /// rust 中对未对齐地址的解引用是 undefined 行为。
+            pub fn as_meta(&'a self)-> Result<&'a #struct_ident, ()>{
+                unsafe {
+                    if (self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0) {
+                        Err(())
+                    } else {
+                        Ok(&*(self.raw.as_ptr() as *const #struct_ident))
                     }
                 }
-            }),
-            Some(quote! {
-                /// 需要确保起始地址对齐。
-                /// rust 中对未对齐地址的解引用是 undefined 行为。
-                pub fn as_meta(&'a self)-> Result<&'a #struct_ident, ()>{
-                    unsafe {
-                        if (self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0) {
-                            Err(())
-                        } else {
-                            Ok(&*(self.raw.as_ptr() as *const #struct_ident))
-                        }
+            }
+            /// 不检查地址对齐
+            pub unsafe fn as_meta_uncheck(&'a self)-> &'a #struct_ident {
+                &*(self.raw.as_ptr() as *const #struct_ident)
+            }
+        }),
+        Some(quote! {
+            /// 除了可修改之外，等同 as_meta
+            pub fn as_mut_meta(&'a mut self)-> Result<&'a mut #struct_ident, ()> {
+                unsafe {
+                    if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0 {
+                        Err(())
+                    } else {
+                        Ok(&mut *(self.raw.as_mut_ptr() as *mut #struct_ident))
                     }
                 }
-                /// 不检查地址对齐
-                pub unsafe fn as_meta_uncheck(&'a self)-> &'a #struct_ident {
-                    &*(self.raw.as_ptr() as *const #struct_ident)
-                }
-            }),
-            Some(quote! {
-                /// 除了可修改之外，等同 as_meta
-                pub fn as_mut_meta(&'a mut self)-> Result<&'a mut #struct_ident, ()> {
-                    unsafe {
-                        if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0 {
-                            Err(())
-                        } else {
-                            Ok(&mut *(self.raw.as_mut_ptr() as *mut #struct_ident))
-                        }
-                    }
-                }
-                /// 不检查地址对齐
-                pub unsafe fn as_mut_meta_uncheck(&'a mut self)-> &'a mut #struct_ident {
-                    &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
-                }
-            }),
-        )
-    } else {
-        (None, None, None)
-    };
+            }
+            /// 不检查地址对齐
+            pub unsafe fn as_mut_meta_uncheck(&'a mut self)-> &'a mut #struct_ident {
+                &mut *(self.raw.as_mut_ptr() as *mut #struct_ident)
+            }
+        }),
+    );
 
     quote! {
         impl Into<[u8; <#struct_ident>::flat_size()]> for #struct_ident {
@@ -110,7 +111,7 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
         }
         impl #struct_ident {
             pub const fn flat_size()-> usize{
-                #struct_size
+                core::mem::size_of::<#struct_ident>()
             }
 
 
