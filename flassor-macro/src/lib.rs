@@ -69,10 +69,10 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             /// rust 中对未对齐地址的解引用是 undefined 行为。
             pub fn as_meta(&'a self)-> Result<&'a #struct_ident, ()>{
                 unsafe {
-                    if (self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0) {
-                        Err(())
-                    } else {
+                    if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() == 0 {
                         Ok(&*(self.raw.as_ptr() as *const #struct_ident))
+                    } else {
+                        Err(())
                     }
                 }
             }
@@ -85,10 +85,10 @@ fn gen_accessor(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
             /// 除了可修改之外，等同 as_meta
             pub fn as_mut_meta(&'a mut self)-> Result<&'a mut #struct_ident, ()> {
                 unsafe {
-                    if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() != 0 {
-                        Err(())
-                    } else {
+                    if self.raw.as_ptr() as usize % core::mem::align_of::<#struct_ident>() == 0 {
                         Ok(&mut *(self.raw.as_mut_ptr() as *mut #struct_ident))
+                    } else {
+                        Err(())
                     }
                 }
             }
